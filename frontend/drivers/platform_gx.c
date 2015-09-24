@@ -243,6 +243,7 @@ static void frontend_gx_init(void *data)
 #ifdef HW_RVL
    IOS_ReloadIOS(IOS_GetVersion());
    L2Enhance();
+   USB_Initialize();
 #ifndef IS_SALAMANDER
    gx_init_mem2();
 #endif

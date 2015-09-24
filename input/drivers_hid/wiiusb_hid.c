@@ -24,12 +24,7 @@
 #include "../input_autodetect.h"
 #include "../input_hid_driver.h"
 
-typedef struct wiiusb_hid
-{
-   joypad_connection_t *slots;
-   int hp; /* wiiusb_hotplug_callback_handle is just int */
-   int quit;
-} wiiusb_hid_t;
+typedef struct wiiusb_hid wiiusb_hid_t;
 
 struct wiiusb_adapter
 {
@@ -55,7 +50,15 @@ struct wiiusb_adapter
    struct wiiusb_adapter *next;
 };
 
-static struct wiiusb_adapter adapters;
+struct wiiusb_hid
+{
+   joypad_connection_t *slots;
+   sthread_t *change_thread;
+   scond_t *change_cond;
+   slock_t *change_lock;
+   volatile bool quitting;
+   struct wiiusb_adapter adapters;
+};
 
 static void adapter_thread(void *data)
 {
@@ -187,8 +190,8 @@ static void wiiusb_get_description(usb_device_entry *device,
 
 static int remove_adapter(void *data, usb_device_entry *dev)
 {
-   struct wiiusb_adapter *adapter = (struct wiiusb_adapter*)&adapters;
    struct wiiusb_hid *hid = (struct wiiusb_hid*)data;
+   struct wiiusb_adapter *adapter = (struct wiiusb_adapter*)&hid->adapters;
 
    while (adapter->next == NULL)
       return -1;
@@ -337,8 +340,8 @@ static int add_adapter(void *data, usb_device_entry *dev)
 
    adapter->data = memalign(32, 2048);
 
-   old_head = adapters.next;
-   adapters.next = adapter;
+   old_head = hid->adapters.next;
+   hid->adapters.next = adapter;
    adapter->next = old_head;
 
    USB_FreeDescriptors(&desc);
@@ -361,25 +364,18 @@ error:
    return -1;
 }
 
-static int wiiusb_hid_changenotify_cb(int result, void *usrdata)
+static s32 wiiusb_hid_changenotify_cb(int result, void *usrdata)
 {
    wiiusb_hid_t *hid = (wiiusb_hid_t*)usrdata;
 
    if (!hid)
-      return -1;
+      return 1;
 
-   /* usb_device_entry entries[8];
-      u8 cnt = 0;
+   slock_lock(hid->change_lock);
+   scond_signal(hid->change_cond);
+   slock_unlock(hid->change_lock);
 
-      USB_GetDeviceList(entries, 8, USB_CLASS_HID, &cnt);
-
-      add_adapter((void *)hid, &entries[0]); */
-
-   // RARCH_LOG("Wii USB hid change notify callback\n");
-
-   USB_DeviceChangeNotifyAsync(USB_CLASS_HID, wiiusb_hid_changenotify_cb, usrdata);
-
-   return 0;
+   return 1;
 }
 
 static bool wiiusb_hid_joypad_query(void *data, unsigned pad)
@@ -463,17 +459,94 @@ static void wiiusb_hid_free(void *data)
 {
    wiiusb_hid_t *hid = (wiiusb_hid_t*)data;
 
-   while (adapters.next)
-      if (remove_adapter(hid, &adapters.next->device) == -1)
+   slock_lock(hid->change_lock);
+   hid->quitting = true;
+   USB_DeviceChangeNotifyAsync(USB_CLASS_HID, NULL, NULL);
+   scond_signal(hid->change_cond);
+   slock_unlock(hid->change_lock);
+   sthread_join(hid->change_thread);
+
+   while (hid->adapters.next)
+      if (remove_adapter(hid, &hid->adapters.next->device) == -1)
          RARCH_ERR("could not remove device %p\n",
-               adapters.next->device);
+               hid->adapters.next->device);
 
    pad_connection_destroy(hid->slots);
 
-   // wiiusb_hotplug_deregister_callback(hid->ctx, hid->hp);
-
    if (hid)
       free(hid);
+}
+
+static int wiiusb_hid_in_device_ids(s32 *device_ids, s32 search)
+{
+   int i;
+
+   for (i = 0; i < MAX_PADS; i++)
+      if (device_ids[i] == search)
+         return i;
+
+   return -1;
+}
+
+static void wiiusb_hid_change_thread(void *usrdata)
+{
+   wiiusb_hid_t *hid = (wiiusb_hid_t*)usrdata;
+   usb_device_entry *dev_entries = (usb_device_entry *)calloc(MAX_USERS, sizeof(*dev_entries));
+   u8 count;
+
+   if (!dev_entries)
+      return;
+
+   for (;;)
+   {
+      s32 current_device_ids[MAX_USERS] = {0};
+      int i;
+      struct wiiusb_adapter *current_dev = hid->adapters.next;
+
+      slock_lock(hid->change_lock);
+      if (!hid->quitting)
+      {
+         scond_wait(hid->change_cond, hid->change_lock);
+         USB_DeviceChangeNotifyAsync(USB_CLASS_HID, wiiusb_hid_changenotify_cb, (void *)hid);
+      }
+      slock_unlock(hid->change_lock);
+
+      if (hid->quitting)
+         break;
+
+      if (USB_GetDeviceList(dev_entries, MAX_USERS, USB_CLASS_HID, &count) < 0)
+         continue;
+
+      // add all device ids to list
+      for (i = 0; i < count; i++)
+         current_device_ids[i] = dev_entries[i].device_id;
+
+      while (current_dev)
+      {
+         int offset = wiiusb_hid_in_device_ids(current_device_ids, current_dev->device.device_id);
+         struct wiiusb_adapter *next_dev = current_dev->next;
+         if (offset >= 0)
+         {
+            // exists, remove it from the list
+            current_device_ids[offset] = 0;
+         }
+         else
+         {
+            // device is gone, remove it
+            remove_adapter(hid, &current_dev->device);
+         }
+
+         current_dev = next_dev;
+      }
+
+      // remaining IDs in the list are new, add them
+      for (i = 0; i < count; i++)
+         if (wiiusb_hid_in_device_ids(current_device_ids, current_dev->device.device_id) >= 0)
+            add_adapter(hid, &dev_entries[i]);
+   }
+
+   free(dev_entries);
+   return;
 }
 
 static void *wiiusb_hid_init(void)
@@ -513,7 +586,16 @@ static void *wiiusb_hid_init(void)
 
    free(dev_entries);
 
-   USB_DeviceChangeNotifyAsync(USB_CLASS_HID, wiiusb_hid_changenotify_cb, (void *)hid);
+   hid->change_cond = scond_new();
+   hid->change_lock = slock_new();
+
+   if (!hid->change_cond || !hid->change_lock)
+      goto error;
+
+   hid->change_thread = sthread_create(wiiusb_hid_change_thread, (void *)hid);
+
+   if (!hid->change_thread)
+      goto error;
 
    return hid;
 
