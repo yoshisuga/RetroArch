@@ -377,7 +377,44 @@ enum
     extern bool apple_gamecontroller_joypad_init(void *data);
     apple_gamecontroller_joypad_init(NULL);
 #endif
+    [self preInstallFilesOnFirstLoad];
 }
+
+-(void)preInstallFilesOnFirstLoad {
+    NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
+    BOOL didLoadOnce = [defaults boolForKey:@"didLoadOnce"];
+    if ( !didLoadOnce ) {
+        NSLog(@"This is the first load, copying bundled files to docs dir");
+        NSFileManager *manager = [NSFileManager defaultManager];
+        NSError *error;
+        NSArray *paths = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES);
+        NSString *documentsDirectory = [paths objectAtIndex:0];
+        NSString *retroarchDirectory = [documentsDirectory stringByAppendingPathComponent:@"RetroArch"];
+        NSString *retroarchSystemDirectory = [retroarchDirectory stringByAppendingPathComponent:@"system"];
+        NSString *filesToInstallFromBundlePath = [[[NSBundle mainBundle] resourcePath] stringByAppendingPathComponent:@"launch-install"];
+        NSString *systemDirToInstall = [filesToInstallFromBundlePath stringByAppendingPathComponent:@"system"];
+        NSLog(@"First deleting existing RA sys dir");
+        if ( ![manager removeItemAtPath:retroarchSystemDirectory error:&error]) {
+            NSLog(@"Delete dir error: %@",[error localizedDescription]);
+            return;
+        }
+        NSLog(@"Copying system dir: ( %@ ) to ( %@ )",systemDirToInstall,retroarchSystemDirectory);
+        if ( ![manager copyItemAtPath:systemDirToInstall toPath:retroarchSystemDirectory error:&error] ) {
+            NSLog(@"Copy dir error: %@",[error localizedDescription]);
+        }
+        NSLog(@"System dir contents copied from bundle!");
+        
+        NSLog(@"Copying roms...");
+        NSString *romsDirToInstall = [filesToInstallFromBundlePath stringByAppendingPathComponent:@"roms"];
+        if ( ![manager copyItemAtPath:romsDirToInstall toPath:[documentsDirectory stringByAppendingPathComponent:@"roms"] error:&error]) {
+            NSLog(@"Copy roms dir error: %@",[error localizedDescription]);
+        }
+        NSLog(@"done copying roms!");
+        
+        [defaults setBool:YES forKey:@"didLoadOnce"];
+    }
+}
+
 
 - (void)applicationDidEnterBackground:(UIApplication *)application
 {
