@@ -374,8 +374,7 @@ enum
    [self supportOtherAudioSessions];
 #endif
 
-   if (rarch_main(argc, argv, NULL))
-      apple_rarch_exited();
+  [self performSelector:@selector(preProcessAndStartRetroArch) withObject:nil afterDelay:0.0f];
 
   iterate_observer = CFRunLoopObserverCreate(0, kCFRunLoopBeforeWaiting,
                                              true, 0, rarch_draw_observer, 0);
@@ -544,6 +543,59 @@ enum
 - (void)mainMenuRenderMessageBox:(NSString *)msg
 {
   [self.mainmenu renderMessageBox:msg];
+}
+
+// This happens before retroarch is initialized so
+- (void) fixFilePathsOnUpgrade {
+    NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
+    NSString *lastBundlePath = [defaults stringForKey:@"lastBundlePath"];
+    NSString *lastDataPath = [defaults stringForKey:@"lastDataPath"];
+    NSString *bundlePath = [[NSBundle mainBundle] bundlePath];
+    NSString *dataPath = [NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES) firstObject];
+    
+    if ( lastDataPath == nil || [dataPath isEqualToString:lastDataPath] ) {
+        return;
+    }
+    
+    NSArray *configFiles = @[ [dataPath stringByAppendingPathComponent:@"RetroArch/config/retroarch.cfg"],
+                              [dataPath stringByAppendingPathComponent:@"RetroArch/config/content_history.lpl"],
+                              [dataPath stringByAppendingPathComponent:@"RetroArch/config/content_favorites.lpl"]
+                              ];
+    for (NSString *configFile in configFiles) {
+        NSError *error;
+        NSLog(@"Reading config file: %@", configFile);
+        NSString *fileContents = [[NSString alloc] initWithContentsOfFile:configFile
+                                                                 encoding:NSUTF8StringEncoding error:&error];
+        if ( error != nil ) {
+            NSLog(@"Error when reading config file (%@): %@",configFile, [error localizedDescription]);
+            continue;
+        }
+        
+        NSLog(@"Replacing bundle and data paths,\nold data path: %@\nnew data path:%@\n\nold bundle path: %@\nnew bundle path: %@",
+              lastDataPath, dataPath, lastBundlePath, bundlePath);
+        NSString *replacedContents = [[fileContents stringByReplacingOccurrencesOfString:lastDataPath withString:dataPath]
+                                      stringByReplacingOccurrencesOfString:lastBundlePath withString:bundlePath];
+        [replacedContents writeToFile:configFile atomically:YES encoding:NSUTF8StringEncoding error:&error];
+        if ( error != nil ) {
+            NSLog(@"Error when writing config file (%@): %@",configFile, [error localizedDescription]);
+            continue;
+        }
+        NSLog(@"Done writing to file: %@", configFile);
+    }
+}
+
+-(void) preProcessAndStartRetroArch {
+    [self fixFilePathsOnUpgrade];
+    NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
+    NSString *bundlePath = [[NSBundle mainBundle] bundlePath];
+    NSString *dataPath = [NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES) firstObject];
+    [defaults setObject:bundlePath forKey:@"lastBundlePath"];
+    [defaults setObject:dataPath forKey:@"lastDataPath"];
+    char arguments[]   = "retroarch";
+    char       *argv[] = {arguments,   NULL};
+    int argc           = 1;
+    if (rarch_main(argc, argv, NULL))
+        apple_rarch_exited();
 }
 
 @end

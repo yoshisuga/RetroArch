@@ -189,8 +189,8 @@ void *glkitview_init(void);
    tenpctw          = width  / 10.0f;
    tenpcth          = height / 10.0f;
    
-   g_pause_indicator_view.frame = CGRectMake(tenpctw * 4.0f, 0.0f, tenpctw * 2.0f, tenpcth);
-   [g_pause_indicator_view viewWithTag:1].frame = CGRectMake(0, 0, tenpctw * 2.0f, tenpcth);
+   g_pause_indicator_view.frame = CGRectMake(tenpctw * 4.5f, 0.0f, tenpctw * 1.0f, tenpcth * 0.5f);
+   [g_pause_indicator_view viewWithTag:1].frame = CGRectMake(0, 0, tenpctw * 1.0f, tenpcth * 0.5f);
 }
 
 #define ALMOST_INVISIBLE (.021f)
