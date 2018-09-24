@@ -153,6 +153,7 @@ void *glkitview_init(void);
 }
 
 #elif defined(HAVE_COCOATOUCH)
+
 - (void)viewDidAppear:(BOOL)animated
 {
    /* Pause Menus. */
@@ -170,7 +171,7 @@ void *glkitview_init(void);
 {
    float width = 0.0f, height = 0.0f, tenpctw, tenpcth;
    RAScreen *screen  = (__bridge RAScreen*)get_chosen_screen();
-   UIInterfaceOrientation orientation = self.interfaceOrientation;
+   UIInterfaceOrientation orientation = [[UIApplication sharedApplication] statusBarOrientation];
    CGRect screenSize = [screen bounds];
    SEL selector = NSSelectorFromString(BOXSTRING("coordinateSpace"));
     
@@ -191,6 +192,37 @@ void *glkitview_init(void);
    
    g_pause_indicator_view.frame = CGRectMake(tenpctw * 4.0f, 0.0f, tenpctw * 2.0f, tenpcth);
    [g_pause_indicator_view viewWithTag:1].frame = CGRectMake(0, 0, tenpctw * 2.0f, tenpcth);
+
+    [self adjustViewFrameForSafeArea];
+}
+
+-(void)viewWillTransitionToSize:(CGSize)size withTransitionCoordinator:(id<UIViewControllerTransitionCoordinator>)coordinator {
+    [super viewWillTransitionToSize:size withTransitionCoordinator:coordinator];
+    if (@available(iOS 11, *)) {
+        [coordinator animateAlongsideTransition:^(id<UIViewControllerTransitionCoordinatorContext>  _Nonnull context) {
+            [self adjustViewFrameForSafeArea];
+        } completion:^(id<UIViewControllerTransitionCoordinatorContext>  _Nonnull context) {
+        }];
+    }
+}
+
+-(void)adjustViewFrameForSafeArea {
+    if (@available(iOS 11, *)) {
+        RAScreen *screen  = (__bridge RAScreen*)get_chosen_screen();
+        CGRect screenSize = [screen bounds];
+        UIEdgeInsets inset = [[UIApplication sharedApplication] delegate].window.safeAreaInsets;
+        NSLog(@"safe area insets: top %f, bottom %f, left %f, right %f", inset.top, inset.bottom, inset.left, inset.right);
+        UIInterfaceOrientation orientation = [[UIApplication sharedApplication] statusBarOrientation];
+        CGRect newFrame = screenSize;
+        if ( orientation == UIInterfaceOrientationPortrait ) {
+            newFrame = CGRectMake(screenSize.origin.x, screenSize.origin.y + inset.top, screenSize.size.width, screenSize.size.height - inset.top);
+        } else if ( orientation == UIInterfaceOrientationLandscapeLeft ) {
+            newFrame = CGRectMake(screenSize.origin.x, screenSize.origin.y, screenSize.size.width - inset.right, screenSize.size.height);
+        } else if ( orientation == UIInterfaceOrientationLandscapeRight ) {
+            newFrame = CGRectMake(screenSize.origin.x + inset.left, screenSize.origin.y, screenSize.size.width - inset.left, screenSize.size.height);
+        }
+        self.view.frame = newFrame;
+    }
 }
 
 #define ALMOST_INVISIBLE (.021f)
