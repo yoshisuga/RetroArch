@@ -28,20 +28,25 @@
 /* Define compatibility symbols and categories. */
 
 #ifdef HAVE_AVFOUNDATION
+#if TARGET_OS_IOS
 #include <AVFoundation/AVCaptureSession.h>
 #include <AVFoundation/AVCaptureDevice.h>
 #include <AVFoundation/AVCaptureOutput.h>
 #include <AVFoundation/AVCaptureInput.h>
 #include <AVFoundation/AVMediaFormat.h>
+#endif
+#endif
+
 #ifdef HAVE_OPENGLES
 #include <CoreVideo/CVOpenGLESTextureCache.h>
 #else
 #include <CoreVideo/CVOpenGLTexture.h>
 #endif
-#endif
 
+#if TARGET_OS_IOS
 #include "../../../location/location_driver.h"
 #include "../../../camera/camera_driver.h"
+#endif
 
 static CocoaView* g_instance;
 
@@ -71,8 +76,8 @@ void *glkitview_init(void);
 {
    if (!g_instance)
       g_instance = [CocoaView new];
-   
-   return g_instance;
+
+    return g_instance;
 }
 
 - (id)init
@@ -165,11 +170,13 @@ void *glkitview_init(void);
 
 - (void)viewDidAppear:(BOOL)animated
 {
+#if TARGET_OS_IOS
    /* Pause Menus. */
    [self showPauseIndicator];
    if (@available(iOS 11.0, *)) {
         [self setNeedsUpdateOfHomeIndicatorAutoHidden];
    }
+#endif
 }
 
 -(void)viewWillTransitionToSize:(CGSize)size withTransitionCoordinator:(id<UIViewControllerTransitionCoordinator>)coordinator {
@@ -184,6 +191,7 @@ void *glkitview_init(void);
 
 -(void)adjustViewFrameForSafeArea {
     // This is for adjusting the view frame to account for the notch in iPhone X phones
+#if TARGET_OS_IOS
     if (@available(iOS 11, *)) {
         RAScreen *screen  = (__bridge RAScreen*)get_chosen_screen();
         CGRect screenSize = [screen bounds];
@@ -199,6 +207,7 @@ void *glkitview_init(void);
         }
         self.view.frame = newFrame;
     }
+#endif
 }
 - (void)showPauseIndicator
 {
@@ -207,6 +216,7 @@ void *glkitview_init(void);
    [g_instance performSelector:@selector(hidePauseButton) withObject:g_instance afterDelay:3.0f];
 }
 
+#if TARGET_OS_IOS
 - (void)viewWillLayoutSubviews
 {
    float width = 0.0f, height = 0.0f, tenpctw, tenpcth;
@@ -234,6 +244,7 @@ void *glkitview_init(void);
    [g_pause_indicator_view viewWithTag:1].frame = CGRectMake(0, 0, tenpctw * 2.0f, tenpcth);
    [self adjustViewFrameForSafeArea];
 }
+#endif
 
 #define ALMOST_INVISIBLE (.021f)
 
@@ -245,6 +256,7 @@ void *glkitview_init(void);
    ];
 }
 
+#if TARGET_OS_IOS
 /* NOTE: This version runs on iOS6+. */
 - (NSUInteger)supportedInterfaceOrientations
 {
@@ -271,6 +283,12 @@ void *glkitview_init(void);
    
    return YES;
 }
+#endif
+
+#endif
+
+#if TARGET_OS_TV
+@end
 #endif
 
 #ifdef HAVE_AVFOUNDATION
@@ -302,6 +320,7 @@ void *glkitview_init(void);
 #define RCVOpenGLGetCurrentContext() CGLGetCurrentContext(), CGLGetPixelFormat(CGLGetCurrentContext())
 #endif
 
+#if TARGET_OS_IOS
 static AVCaptureSession *_session;
 static NSString *_sessionPreset;
 RCVOpenGLTextureCacheRef textureCache;
@@ -437,8 +456,10 @@ didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer
     CFRelease(textureCache);
 }
 #endif
+#endif
 
 #ifdef HAVE_CORELOCATION
+#if TARGET_OS_IOS
 #include <CoreLocation/CoreLocation.h>
 
 static CLLocationManager *locationManager;
@@ -509,10 +530,14 @@ static CLLocationAccuracy currentVerticalAccuracy;
     [locationManager startUpdatingLocation];
 }
 #endif
+#endif
 
+#if TARGET_OS_IOS
 @end
+#endif
 
 #ifdef HAVE_AVFOUNDATION
+#if TARGET_OS_IOS
 typedef struct apple_camera
 {
   void *empty;
@@ -595,8 +620,10 @@ camera_driver_t camera_avfoundation = {
    "avfoundation",
 };
 #endif
+#endif
 
 #ifdef HAVE_CORELOCATION
+#if TARGET_OS_IOS
 typedef struct apple_location
 {
 	void *empty;
@@ -680,4 +707,4 @@ location_driver_t location_corelocation = {
 	"corelocation",
 };
 #endif
-
+#endif

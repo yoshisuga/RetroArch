@@ -136,7 +136,9 @@ void *glkitview_init(void)
    glkitview_init_xibs();
 
    g_view = [GLKView new];
+#if TARGET_OS_IOS
    g_view.multipleTouchEnabled = YES;
+#endif
    g_view.enableSetNeedsDisplay = NO;
    [g_view addSubview:g_pause_indicator_view];
     

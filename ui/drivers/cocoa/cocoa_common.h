@@ -16,6 +16,7 @@
 
 #ifndef __COCOA_COMMON_METAL_H
 #define __COCOA_COMMON_METAL_H
+#endif
 
 #include <Foundation/Foundation.h>
 
@@ -25,14 +26,18 @@
 #endif
 
 #ifdef HAVE_CORELOCATION
+#if TARGET_OS_IOS
 #include <CoreLocation/CoreLocation.h>
+#endif
 #endif
 
 #if defined(HAVE_COCOATOUCH)
 #include <UIKit/UIKit.h>
 
 #ifdef HAVE_AVFOUNDATION
+#ifdef TARGET_OS_IOS
 #import <AVFoundation/AVCaptureOutput.h>
+#endif
 #endif
 
 
@@ -60,8 +65,12 @@ typedef struct
 } apple_frontend_settings_t;
 extern apple_frontend_settings_t apple_frontend_settings;
 
+#if TARGET_OS_IOS
 @interface CocoaView : UIViewController<CLLocationManagerDelegate,
 AVCaptureAudioDataOutputSampleBufferDelegate>
+#elif TARGET_OS_TV
+@interface CocoaView : UIViewController
+#endif
 + (CocoaView*)get;
 @end
 
@@ -107,5 +116,3 @@ void get_ios_version(int *major, int *minor);
 #define BOXINT(x)    [NSNumber numberWithInt:x]
 #define BOXUINT(x)   [NSNumber numberWithUnsignedInt:x]
 #define BOXFLOAT(x)  [NSNumber numberWithDouble:x]
-
-#endif
