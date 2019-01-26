@@ -582,7 +582,7 @@ static enum frontend_powerstate frontend_darwin_get_powerstate(int *seconds, int
 end:
    if (blob)
       CFRelease(blob);
-#elif defined(IOS)
+#elif TARGET_OS_IOS
    float level;
    UIDevice *uidev = [UIDevice currentDevice];
 
