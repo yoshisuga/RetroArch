@@ -25,7 +25,12 @@
 {
    return [NSString stringWithFormat:@"( format = %@, frame = %@ )",
                                      NSStringFromRPixelFormat(_format),
-                                     NSStringFromSize(_size)];
+#ifdef HAVE_COCOATOUCH
+                                     NSStringFromCGSize(_size)
+#else
+                                     NSStringFromSize(_size)
+#endif
+           ];
 }
 
 @end

@@ -636,7 +636,9 @@ typedef struct MTLALIGN(16)
       switch (i)
       {
          case RARCH_WRAP_BORDER:
+#ifdef HAVE_COCOA
             sd.sAddressMode = MTLSamplerAddressModeClampToBorderColor;
+#endif
             break;
 
          case RARCH_WRAP_EDGE:
@@ -956,7 +958,9 @@ typedef struct MTLALIGN(16)
 
             if (buffer_sem->stage_mask & SLANG_STAGE_FRAGMENT_MASK)
                [rce setFragmentBuffer:buffer offset:0 atIndex:buffer_sem->binding];
+#ifdef HAVE_COCOA
             [buffer didModifyRange:NSMakeRange(0, buffer.length)];
+#endif
          }
       }
 
@@ -1284,7 +1288,13 @@ typedef struct MTLALIGN(16)
                   continue;
                }
 
-               id<MTLBuffer> buf = [_context.device newBufferWithLength:size options:MTLResourceStorageModeManaged];
+               id<MTLBuffer> buf = [_context.device newBufferWithLength:size options:
+#ifdef HAVE_COCOA
+                                    MTLResourceStorageModeManaged
+#else
+                                    MTLResourceStorageModeShared
+#endif
+                                    ];
                STRUCT_ASSIGN(_engine.pass[i].buffers[j], buf);
             }
          } @finally
@@ -1400,7 +1410,13 @@ typedef struct MTLALIGN(16)
    NSUInteger needed = sizeof(SpriteVertex) * count * 4;
    if (!_vert || _vert.length < needed)
    {
-      _vert = [_context.device newBufferWithLength:needed options:MTLResourceStorageModeManaged];
+      _vert = [_context.device newBufferWithLength:needed options:
+#ifdef HAVE_COCOATOUCH
+               MTLResourceStorageModeShared
+#else
+               MTLResourceStorageModeManaged
+#endif
+               ];
    }
 
    for (NSUInteger i = 0; i < count; i++)
@@ -1420,7 +1436,9 @@ typedef struct MTLALIGN(16)
 {
    if (_vertDirty)
    {
+#ifdef HAVE_COCOA
       [_vert didModifyRange:NSMakeRange(0, _vert.length)];
+#endif
       _vertDirty = NO;
    }
 

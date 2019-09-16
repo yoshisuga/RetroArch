@@ -56,7 +56,7 @@ typedef enum apple_view_type {
 @interface MetalView : MTKView
 @end
 
-#ifdef HAVE_COCOA_METAL
+#if defined(HAVE_COCOA_METAL) || defined(HAVE_COCOATOUCH_METAL)
 
 @protocol ApplePlatform
 
@@ -116,7 +116,16 @@ extern id<ApplePlatform> apple_platform;
 @end
 
 @interface RetroArch_iOS : UINavigationController<UIApplicationDelegate,
-UINavigationControllerDelegate>
+UINavigationControllerDelegate,
+#ifdef HAVE_COCOATOUCH_METAL
+ApplePlatform
+#endif
+> {
+#ifdef HAVE_COCOATOUCH_METAL
+   apple_view_type_t _vt;
+   UIView* _renderView;
+#endif
+}
 
 @property (nonatomic) UIWindow* window;
 @property (nonatomic) NSString* documentsDirectory;

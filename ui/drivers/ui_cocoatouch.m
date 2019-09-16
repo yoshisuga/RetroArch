@@ -38,7 +38,7 @@
 #endif
 
 static char msg_old[PATH_MAX_LENGTH];
-#ifdef HAVE_COCOA_METAL
+#if defined(HAVE_COCOA_METAL) || defined(HAVE_COCOATOUCH_METAL)
 id<ApplePlatform> apple_platform;
 #else
 static id apple_platform;
@@ -520,6 +520,85 @@ enum
   [self.mainmenu renderMessageBox:msg];
 #endif
 }
+
+# pragma mark - ApplePlatform
+
+#ifdef HAVE_COCOATOUCH_METAL
+- (void)setViewType:(apple_view_type_t)vt {
+   if (vt == _vt) {
+      return;
+   }
+
+   RARCH_LOG("[Cocoa]: change view type: %d → %d\n", _vt, vt);
+
+   _vt = vt;
+   if (_renderView != nil)
+   {
+//      _renderView.wantsLayer = NO;
+//      _renderView.layer = nil;
+      [_renderView removeFromSuperview];
+//      self.window.contentView = nil;
+      _renderView = nil;
+   }
+
+   switch (vt) {
+      case APPLE_VIEW_TYPE_VULKAN:
+      case APPLE_VIEW_TYPE_METAL:
+      {
+         MetalView *v = [MetalView new];
+         v.paused = YES;
+         v.enableSetNeedsDisplay = NO;
+         _renderView = v;
+      }
+      break;
+
+      case APPLE_VIEW_TYPE_OPENGL:
+      {
+         _renderView = g_view;
+         break;
+      }
+
+      case APPLE_VIEW_TYPE_NONE:
+      default:
+         return;
+   }
+//
+//   _renderView.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
+//   [_renderView setFrame: [[self.window contentView] bounds]];
+//
+//   self.window.contentView = _renderView;
+//   self.window.contentView.nextResponder = _listener;
+   
+   // TODO: need to set the root view controller's view here???
+}
+
+- (apple_view_type_t)viewType {
+   return _vt;
+}
+
+- (id)renderView {
+   return _renderView;
+}
+
+- (bool)hasFocus {
+   return ([[UIApplication sharedApplication] applicationState] == UIApplicationStateActive);
+}
+
+- (void)setVideoMode:(gfx_ctx_mode_t)mode {
+   _renderView.frame = CGRectMake(0, 0, mode.width, mode.height);
+}
+
+- (void)setCursorVisible:(bool)v {
+   // NOOP for iOS
+}
+
+- (bool)setDisableDisplaySleep:(bool)disable
+{
+   // NOOP for iOS
+}
+
+#endif
+
 
 @end
 

@@ -35,9 +35,11 @@
 #ifdef HAVE_METAL
 @implementation MetalView
 
+#ifdef HAVE_COCOA_METAL
 - (void)keyDown:(NSEvent*)theEvent
 {
 }
+#endif
 
 /* Stop the annoying sound when pressing a key. */
 - (BOOL)acceptsFirstResponder
@@ -108,6 +110,8 @@ void *glkitview_init(void);
    [self registerForDraggedTypes:[NSArray arrayWithObjects:NSColorPboardType, NSFilenamesPboardType, nil]];
 #elif defined(HAVE_COCOA_METAL)
    [self registerForDraggedTypes:@[NSColorPboardType, NSFilenamesPboardType]];
+#elif defined(HAVE_COCOATOUCH_METAL)
+   self.view = (MetalView*) apple_platform.renderView;
 #elif defined(HAVE_COCOATOUCH)
    self.view = (BRIDGE GLKView*)glkitview_init();
 #if TARGET_OS_IOS
