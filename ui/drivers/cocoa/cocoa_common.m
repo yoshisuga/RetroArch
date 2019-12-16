@@ -221,7 +221,7 @@ void *glkitview_init(void);
     if (context) {
         GLKView *glkview = (BRIDGE GLKView*) glkview_get_ptr();
         if (glkview) {
-            [glkview bindDrawable];
+            [glkview setNeedsDisplay];
         }
     }
 }
