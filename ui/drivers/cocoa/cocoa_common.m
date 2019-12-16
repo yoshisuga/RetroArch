@@ -87,6 +87,9 @@ void *glkitview_init(void);
    [self registerForDraggedTypes:@[NSColorPboardType, NSFilenamesPboardType]];
 #elif defined(HAVE_COCOATOUCH)
    self.view = (BRIDGE GLKView*)glkitview_init();
+    CADisplayLink *displayLink = [CADisplayLink displayLinkWithTarget:self selector:@selector(updateDisplay)];
+    displayLink.preferredFramesPerSecond = [UIScreen mainScreen].maximumFramesPerSecond;
+    [displayLink addToRunLoop:[NSRunLoop currentRunLoop] forMode:NSDefaultRunLoopMode];
 #if TARGET_OS_IOS
     UISwipeGestureRecognizer *swipe = [[UISwipeGestureRecognizer alloc] initWithTarget:self action:@selector(showNativeMenu)];
     swipe.numberOfTouchesRequired = 4;
@@ -209,6 +212,17 @@ void *glkitview_init(void);
 		    newFrame = CGRectMake(screenSize.origin.x + inset.left, screenSize.origin.y, screenSize.size.width - inset.left * 2, screenSize.size.height);
         }
         self.view.frame = newFrame;
+    }
+}
+
+-(void)updateDisplay
+{
+    GLContextClass* context = (BRIDGE GLContextClass*) glcontext_get_ptr();
+    if (context) {
+        GLKView *glkview = (BRIDGE GLKView*) glkview_get_ptr();
+        if (glkview) {
+            [glkview bindDrawable];
+        }
     }
 }
 

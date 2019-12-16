@@ -117,12 +117,12 @@ void nsview_set_ptr(CocoaView *p)
 
 #if defined(HAVE_COCOA) || defined(HAVE_COCOA_METAL)
 static NSOpenGLPixelFormat* g_format;
+#endif
 
 void *glcontext_get_ptr(void)
 {
    return (BRIDGE void *)g_context;
 }
-#endif
 
 static uint32_t cocoagl_gfx_ctx_get_flags(void *data)
 {
@@ -193,8 +193,13 @@ void *glkitview_init(void)
 #if defined(HAVE_COCOATOUCH)
 void cocoagl_bind_game_view_fbo(void)
 {
-   if (g_context)
-      [g_view bindDrawable];
+//   if (g_context)
+//      [g_view bindDrawable];
+}
+
+void *glkview_get_ptr(void)
+{
+   return (BRIDGE void *)((GLKView*)g_view);
 }
 #endif
 

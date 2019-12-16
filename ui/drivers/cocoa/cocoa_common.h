@@ -148,4 +148,8 @@ void nsview_set_ptr(CocoaView *ptr);
 
 void *get_chosen_screen(void);
 
+void *glcontext_get_ptr(void);
+
+void *glkview_get_ptr(void);
+
 #endif
