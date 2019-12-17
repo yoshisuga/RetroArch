@@ -74,7 +74,7 @@ typedef enum apple_view_type {
 @end
 
 #if TARGET_OS_IOS
-@interface CocoaView : UIViewController
+@interface CocoaView : GLKViewController
 #elif TARGET_OS_TV
 @interface CocoaView : GCEventViewController
 #endif
